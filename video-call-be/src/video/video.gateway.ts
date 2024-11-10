@@ -66,6 +66,22 @@ export class VideoGateway {
     }
   }
 
+  @SubscribeMessage('connection-success')
+  handleSuccessMessage(client: Socket, receiverId: String) {
+    const senderInfo = this.activeUsers.get(client.id);
+    const senderUserId = senderInfo ? senderInfo.userId : null;
+    const targetUserInfo = Array.from(this.activeUsers.values()).find(
+      (user) => user.userId === receiverId,
+    );
+    console.log('remoteId', receiverId);
+    const targetSocketId = targetUserInfo ? targetUserInfo.socketId : null;
+    if (targetSocketId) {
+      this.server.to(targetSocketId).emit('success-message');
+    } else {
+      console.log('User not connected');
+    }
+  }
+
   @SubscribeMessage('make-call')
   async handleCallUser(
     client: Socket,

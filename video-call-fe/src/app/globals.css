@@ -193,14 +193,26 @@ button:hover {
 }
 
 .input-section {
-  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  padding: 16px;
+  border-radius: 8px;
+  width: 300px;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 10px;
 }
 
 .peer-id {
   margin-bottom: 10px;
   font-weight: bold;
+}
+
+.peer-id-box, .input-box, .button-box {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
 }
 
 .chat-box {
@@ -235,6 +247,7 @@ button:hover {
 .input {
   flex: 1;
   padding: 8px;
+  margin-left: 5px;
 }
 
 .button {
@@ -250,4 +263,22 @@ button:hover {
 .send-button {
   background-color: #28a745;
   color: white;
+}
+
+.notification {
+  padding: 8px 12px;
+  margin: 10px 0px;
+  border-radius: 5px;
+  font-size: 14px;
+  color: #fff;
+  text-align: center;
+  width: 100%;
+}
+
+.success {
+  background-color: #4caf50;
+}
+
+.fail {
+  background-color: #f44336;
 }
