@@ -6,15 +6,21 @@ import io from "socket.io-client";
 const VideoChat = () => {
   const [peerId, setPeerId] = useState(null);
   const [localStream, setLocalStream] = useState(null);
-  const [socket, setSocket] = useState(null);
   const [peer, setPeer] = useState(null);
   const [remotePeerId, setRemotePeerId] = useState("");
   const [remoteStream, setRemoteStream] = useState(null);
-  const [isMicEnabled, setIsMicEnabled] = useState(true);
-  const [isCamEnabled, setIsCamEnabled] = useState(true);
-  const [callInProgress, setCallInProgress] = useState(false);  // Track if call is active
+  const [callInProgress, setCallInProgress] = useState(false);
+  const [incomingCall, setIncomingCall] = useState(null);
 
-  useEffect(() => {
+  const newSocket = io("http://localhost:5000");
+
+  const initPeerAndSocket = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+    setLocalStream(stream);
+
     const newPeer = new Peer();
     setPeer(newPeer);
 
@@ -23,20 +29,8 @@ const VideoChat = () => {
     });
 
     newPeer.on("call", (call) => {
-      call.answer(localStream);
-      call.on("stream", (remoteStream) => {
-        setRemoteStream(remoteStream);
-      });
+      setIncomingCall(call);
     });
-
-    const newSocket = io("http://localhost:8000", {
-      transports: ["websocket", "polling"],
-      path: "/socket",
-      reconnection: true,
-      reconnectionAttempts: 5,
-    });
-
-    setSocket(newSocket);
 
     newSocket.on("connect", () => {
       console.log("Connected via WebSocket");
@@ -45,53 +39,46 @@ const VideoChat = () => {
 
     newSocket.on("new-call", (data) => {
       setCallInProgress(true);
-      const call = newPeer.call(data.callerId, localStream);
-      call.on("stream", (remoteStream) => {
-        setRemoteStream(remoteStream);
+      const outgoingCall = newPeer.call(data.callerId, stream);
+      outgoingCall.on("stream", (incomingStream) => {
+        setRemoteStream(incomingStream);
       });
     });
-
-    return () => {
-      newPeer?.destroy();
-      newSocket?.disconnect();
-    };
-  }, [localStream]);
-
-  const getMediaStream = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      setLocalStream(stream);
-    } catch (error) {
-      console.error("Error accessing media devices.", error);
-    }
   };
 
   useEffect(() => {
-    getMediaStream();
+    initPeerAndSocket();
+    return () => {
+      peer?.destroy();
+      newSocket?.disconnect();
+      localStream?.getTracks().forEach((track) => track.stop());
+    };
   }, []);
 
-  const handleCall = () => {
-    console.log("call please");
-
-    if (remotePeerId && localStream) {
-      const call = peer.call(remotePeerId, localStream);
-      call.on("stream", (remoteStream) => {
-        setRemoteStream(remoteStream);
+  const handleAnswerCall = () => {
+    if (incomingCall && localStream) {
+      incomingCall.answer(localStream);
+      incomingCall.on("stream", (incomingStream) => {
+        setRemoteStream(incomingStream);
       });
 
-      socket.emit("make-call", {
-        callerId: peerId,
-        receiverId: remotePeerId,
+      setCallInProgress(true);
+      setIncomingCall(null);
+    }
+  };
+
+  const handleCall = () => {
+    if (remotePeerId && localStream) {
+      const outgoingCall = peer.call(remotePeerId, localStream);
+      outgoingCall.on("stream", (incomingStream) => {
+        setRemoteStream(incomingStream);
       });
 
       setCallInProgress(true);
     }
   };
 
-  const handleHangup = async () => {
+  const handleHangup = () => {
     if (peer) {
       peer.disconnect();
     }
@@ -99,41 +86,32 @@ const VideoChat = () => {
     setLocalStream(null);
     setRemoteStream(null);
     setCallInProgress(false);
-    setIsMicEnabled(true);
-    setIsCamEnabled(true);
-  };
-
-  const toggleMicrophone = () => {
-    const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled;
-      setIsMicEnabled(audioTrack.enabled);
-    }
-  };
-
-  const toggleCamera = () => {
-    const videoTrack = localStream.getVideoTracks()[0];
-    if (videoTrack) {
-      videoTrack.enabled = !videoTrack.enabled;
-      setIsCamEnabled(videoTrack.enabled);
-    }
+    setIncomingCall(null);
   };
 
   return (
     <div className="container">
       <h1 className="title">Video Chat</h1>
 
-      <div className="input-section">
-        <div id="myId" className="peer-id">
-          {peerId ? `My ID: ${peerId}` : "Loading ID..."}
+      <div className="input-section-box">
+        <div className="peer-id-box">
+          <div id="myId" className="peer-id">
+            {peerId ? `My ID : ${peerId}` : "Loading ID..."}
+          </div>
         </div>
-        <input
-          type="text"
-          placeholder="Enter remote peer ID"
-          className="input"
-          value={remotePeerId}
-          onChange={(e) => setRemotePeerId(e.target.value)}
-        />
+
+        <div className="input-box">
+          <div id="myId" className="peer-id">
+            Remote ID :
+          </div>
+          <input
+            type="text"
+            placeholder="Enter remote peer ID"
+            className="input"
+            value={remotePeerId}
+            onChange={(e) => setRemotePeerId(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="video-container">
@@ -167,14 +145,15 @@ const VideoChat = () => {
       </div>
 
       <div className="button-container">
-        <button
-          id="callButton"
-          className="button call-button"
-          onClick={handleCall}
-          disabled={callInProgress} // Disable call button while call is in progress
-        >
-          Join
-        </button>
+        {!callInProgress && (
+          <button
+            id="callButton"
+            className="button call-button"
+            onClick={handleCall}
+          >
+            Call
+          </button>
+        )}
         {callInProgress && (
           <button
             id="hangupButton"
@@ -184,22 +163,15 @@ const VideoChat = () => {
             Hang Up
           </button>
         )}
-        <button
-          id="micButton"
-          className="button mic-button"
-          onClick={toggleMicrophone}
-          disabled={!callInProgress} // Disable microphone button if no call is in progress
-        >
-          {isMicEnabled ? "Mute" : "Unmute"} Microphone
-        </button>
-        <button
-          id="camButton"
-          className="button cam-button"
-          onClick={toggleCamera}
-          disabled={!callInProgress} // Disable camera button if no call is in progress
-        >
-          {isCamEnabled ? "Disable" : "Enable"} Camera
-        </button>
+        {incomingCall && !callInProgress && (
+          <button
+            id="answerButton"
+            className="button answer-button"
+            onClick={handleAnswerCall}
+          >
+            Answer
+          </button>
+        )}
       </div>
     </div>
   );
