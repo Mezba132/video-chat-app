@@ -1,0 +1,169 @@
+// "use client";
+// import { useEffect, useState } from "react";
+// import Peer from "peerjs";
+// import io from "socket.io-client";
+
+// const VideoChat = () => {
+//   const [peerId, setPeerId] = useState(null);
+//   const [localStream, setLocalStream] = useState(null);
+//   const [socket, setSocket] = useState(null);
+//   const [peer, setPeer] = useState(null);
+//   const [remotePeerId, setRemotePeerId] = useState("");
+//   const [remoteStream, setRemoteStream] = useState(null);
+//   const [callInProgress, setCallInProgress] = useState(false);
+
+//   const newSocket = io("http://localhost:5000");
+
+//   useEffect(() => {
+//     const newPeer = new Peer();
+//     setPeer(newPeer);
+
+//     newPeer.on("open", (id) => {
+//       setPeerId(id);
+//     });
+
+//     newPeer.on("call", (call) => {
+//       call.answer(localStream);
+//       call.on("stream", (remoteStream) => {
+//         setRemoteStream(remoteStream);
+//       });
+//     });
+
+//     setSocket(newSocket);
+
+//     newSocket.on("connect", () => {
+//       console.log("Connected via WebSocket");
+//       newSocket.emit("register", newPeer.id);
+//     });
+
+//     newSocket.on("new-call", (data) => {
+//       setCallInProgress(true);
+//       const call = newPeer.call(data.callerId, localStream);
+//       call.on("stream", (remoteStream) => {
+//         setRemoteStream(remoteStream);
+//       });
+//     });
+
+//     return () => {
+//       newPeer?.destroy();
+//       newSocket?.disconnect();
+//     };
+//   }, [localStream]);
+
+//   const getMediaStream = async () => {
+//     try {
+//       const stream = await navigator.mediaDevices.getUserMedia({
+//         video: true,
+//         audio: true,
+//       });
+//       setLocalStream(stream);
+//     } catch (error) {
+//       console.error("Error accessing media devices.", error);
+//     }
+//   };
+
+//   useEffect(() => {
+//     getMediaStream();
+//   }, []);
+
+//   const handleCall = () => {
+
+//     if (remotePeerId && localStream) {
+//       const call = peer.call(remotePeerId, localStream);
+//       call.on("stream", (remoteStream) => {
+//         setRemoteStream(remoteStream);
+//       });
+
+//       setCallInProgress(true);
+//     }
+//   };
+
+//   const handleHangup = async () => {
+//     if (peer) {
+//       peer.disconnect();
+//     }
+//     localStream.getTracks().forEach((track) => track.stop());
+//     setLocalStream(null);
+//     setRemoteStream(null);
+//     setCallInProgress(false);
+//   };
+
+//   return (
+//     <div className="container">
+//       <h1 className="title">Video Chat</h1>
+
+//       <div className="input-section-box">
+//         <div className="peer-id-box">
+//           <div id="myId" className="peer-id">
+//             {peerId ? `My ID : ${peerId}` : "Loading ID..."}
+//           </div>
+//         </div>
+
+//         <div className="input-box">
+//           <div id="myId" className="peer-id">
+//             Remote ID :
+//           </div>
+//           <input
+//             type="text"
+//             placeholder="Enter remote peer ID"
+//             className="input"
+//             value={remotePeerId}
+//             onChange={(e) => setRemotePeerId(e.target.value)}
+//           />
+//         </div>
+//       </div>
+
+//       <div className="video-container">
+//         <div className="video-section">
+//           <h2 className="video-title">Your Video</h2>
+//           <video
+//             ref={(video) => {
+//               if (video && localStream) {
+//                 video.srcObject = localStream;
+//               }
+//             }}
+//             autoPlay
+//             playsInline
+//             className="video-element"
+//           ></video>
+//         </div>
+
+//         <div className="video-section">
+//           <h2 className="video-title">Remote Video</h2>
+//           <video
+//             ref={(video) => {
+//               if (video && remoteStream) {
+//                 video.srcObject = remoteStream;
+//               }
+//             }}
+//             autoPlay
+//             playsInline
+//             className="video-element"
+//           ></video>
+//         </div>
+//       </div>
+
+//       <div className="button-container">
+//         <button
+//           id="callButton"
+//           className="button call-button"
+//           onClick={handleCall}
+//           disabled={callInProgress} // Disable call button while call is in progress
+//         >
+//           Join
+//         </button>
+//         {callInProgress && (
+//           <button
+//             id="hangupButton"
+//             className="button hangup-button"
+//             onClick={handleHangup}
+//           >
+//             Hang Up
+//           </button>
+//         )}
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default VideoChat;
